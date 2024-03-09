@@ -65,8 +65,6 @@ def uniform_cost_search(initial_state):
         for successor in current_state.successors():
             if tuple(map(tuple, successor.board)) not in explored:
                 frontier.put(successor)
-        
-        sleep(0.02)
 
     return None
 
@@ -138,18 +136,22 @@ class PuzzleInterface:
 
         self.buttons = []
         self.board = []  # Initialize the board attribute
-        self.numbers = [1, 2, 0, 4, 6, 3, 7, 5, 8]  # Initial numbers list
+        self.temp_board = []  # Initialize the temp_board attribute
+        self.numbers = [0,4,1,7,3,2,5,6,8]  # Initial numbers list
 
         for i in range(N):
             row_buttons = []
             row_board = []
+            row_temp_board = []  # Initialize row for temp_board
             for j in range(N):
                 button = tk.Button(self.frame, text="", width=2, height=1, command=lambda i=i, j=j: self.move_tile(i, j))
                 button.grid(row=i, column=j)
                 row_buttons.append(button)
                 row_board.append(0) 
+                row_temp_board.append(0)  # Add placeholder value to temp_board
             self.buttons.append(row_buttons)
-            self.board.append(row_board) 
+            self.board.append(row_board)
+            self.temp_board.append(row_temp_board)  # Append the row to temp_board
 
         self.initialize_board()
 
@@ -158,12 +160,11 @@ class PuzzleInterface:
 
         self.algorithm = algorithm
 
-
-
     def initialize_board(self):
         for i in range(N):
             for j in range(N):
                 self.board[i][j] = self.numbers[i * N + j]
+                self.temp_board[i][j] = self.numbers[i * N + j]  # Initialize temp_board with the same values as board
         self.update_gui()
 
     def update_gui(self):
@@ -172,7 +173,6 @@ class PuzzleInterface:
                 value = self.board[i][j]
                 text = str(value) if value != 0 else ""
                 self.buttons[i][j].config(text=text)
-
 
     def move_tile(self, i, j):
         blank_row, blank_col = self.get_blank_position()
@@ -184,6 +184,12 @@ class PuzzleInterface:
         for i in range(N):
             for j in range(N):
                 if self.board[i][j] == 0:
+                    return i, j
+                
+    def get_blank_position_in_temp(self):
+        for i in range(N):
+            for j in range(N):
+                if self.temp_board[i][j] == 0:
                     return i, j
 
     def solve_puzzle_uniform_cost(self):
@@ -201,6 +207,7 @@ class PuzzleInterface:
         pass
 
     def animate_solution(self, solution):
+        # Update the step label
         step_label = tk.Label(self.root, text=f"Step: {len(solution)}", bg="#FFFFE0")
         step_label.pack()
 
@@ -212,42 +219,40 @@ class PuzzleInterface:
             if 0 <= new_row < N and 0 <= new_col < N:
                 self.board[blank_row][blank_col], self.board[new_row][new_col] = self.board[new_row][new_col], self.board[blank_row][blank_col]
 
-                # Update the GUI with the new board configuration
-                self.update_gui()
-
                 # Update the blank position
                 blank_row, blank_col = new_row, new_col
+                
+                self.root.update_idletasks()
 
-                # Update the step label
-                step_label.config(text=f"Step: {step}")
-
-            self.root.after(500)
-            self.root.update_idletasks()
-    
     def display_solution(self, solution):
         self.state_display.delete(1.0, tk.END)  # Clear the text widget before displaying the solution
 
-        current_board = deepcopy(self.board)  # Create a copy of the initial board
-
+        current_board = deepcopy(self.temp_board) # Create a copy of the initial board
+        
         # Insert the initial state of the puzzle
         self.state_display.insert(tk.END, "RESULT\nInitial State:\n")
+
+        for row in current_board:
+            for index, element in enumerate(row):
+                if element == 0:
+                    row[index] = " "
+
         for row in current_board:
             self.state_display.insert(tk.END, " ".join(map(str, row)) + "\n")
         self.state_display.insert(tk.END, "\n")
 
-        blank_row, blank_col = self.get_blank_position()  # Remove the argument
+        blank_row, blank_col = self.get_blank_position_in_temp()
 
         for step, action in enumerate(solution, start=1):
             self.state_display.insert(tk.END, f"Step {step}:\n")
-            
-            new_row, new_col =  action[0], action[1]
+
+            new_row, new_col = action[0], action[1]
 
             if 0 <= new_row < N and 0 <= new_col < N:
                 current_board[blank_row][blank_col], current_board[new_row][new_col] = current_board[new_row][new_col], current_board[blank_row][blank_col]
 
                 blank_row, blank_col = new_row, new_col 
 
-            # Display the current state of the puzzle
             for row in current_board:
                 self.state_display.insert(tk.END, " ".join(map(str, row)) + "\n")
             self.state_display.insert(tk.END, "\n")
