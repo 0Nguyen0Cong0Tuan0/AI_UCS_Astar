@@ -8,6 +8,9 @@ from time import sleep
 # Define the size of the puzzle board (N x N)
 N = 3
 
+goal_board = [[j + N * i + 1 for j in range(N)] for i in range(N)]
+goal_board[N-1][N-1] = 0
+
 class PuzzleState:
     def __init__(self, board, parent=None, action=None, cost=0):
         self.board = board
@@ -63,15 +66,12 @@ def uniform_cost_search(initial_state):
             if tuple(map(tuple, successor.board)) not in explored:
                 frontier.put(successor)
         
-        sleep(1)
+        sleep(0.02)
 
     return None
 
 
 def is_goal_state(state):
-    goal_board = [[j + N * i + 1 for j in range(N)] for i in range(N)]
-    goal_board[N-1][N-1] = 0
-    
     return state.board == goal_board
 
 
@@ -85,13 +85,60 @@ def get_solution(state):
 class PuzzleGUI:
     def __init__(self, root):
         self.root = root
+        self.root.title("22127436_N-Puzzle Solver")
+        self.root.geometry("400x400")  # Adjusted window size
+        self.root.configure(bg="#F0F0F0")  # Set background color to slight yellow
+        
+        self.create_menu()
+
+    def create_menu(self):
+        menu_frame = tk.Frame(self.root)
+        menu_frame.pack()
+
+        space_label = tk.Label(menu_frame, text="", pady=15)
+        space_label.pack()
+
+        menu_label = tk.Label(menu_frame, text="CHOOSE THE ALGORITHM", font=("Helvetica", 16, "bold"), fg="#FF0000", justify="center", padx=100, pady=20)
+        menu_label.pack()
+
+        uniform_cost_button = tk.Button(menu_frame, text="Uniform Cost Search", command=self.open_puzzle_uniform_cost, padx=10, pady=10)
+        uniform_cost_button.pack()
+
+        space_label = tk.Label(menu_frame, text="", pady=5)
+        space_label.pack()
+
+        astar_button = tk.Button(menu_frame, text="A* Search", command=self.open_puzzle_astar, padx=10, pady=10)
+        astar_button.pack()
+
+    def open_puzzle_uniform_cost(self):
+        self.root.destroy()  # Close the menu window
+        root = tk.Tk()
+        app = PuzzleInterface(root, "Uniform Cost Search")
+        solve_button = tk.Button(root, text="Solve", command=app.solve_puzzle_uniform_cost)
+        solve_button.pack()
+        root.mainloop()
+
+    def open_puzzle_astar(self):
+        self.root.destroy()  # Close the menu window
+        root = tk.Tk()
+        app = PuzzleInterface(root, "A* Search")
+        solve_button = tk.Button(root, text="Solve", command=app.solve_puzzle_astar)
+        solve_button.pack()
+        root.mainloop()
+
+class PuzzleInterface:
+    def __init__(self, root, algorithm):
+        self.root = root
         self.root.title("N-Puzzle Solver")
+        self.root.geometry("400x400")  # Adjusted window size
+        self.root.configure(bg="#FFFFE0")  # Set background color to slight yellow
 
         self.frame = tk.Frame(self.root)
         self.frame.pack()
 
         self.buttons = []
         self.board = []  # Initialize the board attribute
+        self.numbers = [1, 2, 0, 4, 6, 3, 7, 5, 8]  # Initial numbers list
 
         for i in range(N):
             row_buttons = []
@@ -100,20 +147,24 @@ class PuzzleGUI:
                 button = tk.Button(self.frame, text="", width=2, height=1, command=lambda i=i, j=j: self.move_tile(i, j))
                 button.grid(row=i, column=j)
                 row_buttons.append(button)
-                row_board.append(0)  # Initialize each cell of the board with 0
+                row_board.append(0) 
             self.buttons.append(row_buttons)
-            self.board.append(row_board)  # Append the row_board to the board attribute
+            self.board.append(row_board) 
 
         self.initialize_board()
 
+        self.state_display = tk.Text(self.root, height=10, width=30)  # Create a Text widget to display the state
+        self.state_display.pack()
+
+        self.algorithm = algorithm
+
+
+
     def initialize_board(self):
-            # numbers = list(range(N * N))
-            # random.shuffle(numbers)  # Shuffle the numbers randomly
-            numbers = [1,2,3,4,5,6,7,0,8]
-            for i in range(N):
-                for j in range(N):
-                    self.board[i][j] = numbers[i * N + j]
-            self.update_gui()
+        for i in range(N):
+            for j in range(N):
+                self.board[i][j] = self.numbers[i * N + j]
+        self.update_gui()
 
     def update_gui(self):
         for i in range(N):
@@ -121,6 +172,7 @@ class PuzzleGUI:
                 value = self.board[i][j]
                 text = str(value) if value != 0 else ""
                 self.buttons[i][j].config(text=text)
+
 
     def move_tile(self, i, j):
         blank_row, blank_col = self.get_blank_position()
@@ -134,45 +186,76 @@ class PuzzleGUI:
                 if self.board[i][j] == 0:
                     return i, j
 
-    def solve_puzzle(self):
+    def solve_puzzle_uniform_cost(self):
         initial_state = PuzzleState(self.board)
         solution = uniform_cost_search(initial_state)
         if solution:
             messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)}")
             self.animate_solution(solution)
+            self.display_solution(solution)
         else:
             messagebox.showinfo("No Solution", "No solution found for the current puzzle.")
-            
+
+    def solve_puzzle_astar(self):
+        # Implement A* search algorithm
+        pass
+
     def animate_solution(self, solution):
-        step_label = tk.Label(self.root, text="Step: 0")
+        step_label = tk.Label(self.root, text=f"Step: {len(solution)}", bg="#FFFFE0")
         step_label.pack()
 
         for step, action in enumerate(solution, start=1):
             blank_row, blank_col = self.get_blank_position()
             new_row, new_col = blank_row + action[0], blank_col + action[1]
-            
+
             # Ensure the new_row and new_col are within bounds
             if 0 <= new_row < N and 0 <= new_col < N:
                 self.board[blank_row][blank_col], self.board[new_row][new_col] = self.board[new_row][new_col], self.board[blank_row][blank_col]
-                
+
                 # Update the GUI with the new board configuration
                 self.update_gui()
-                
+
                 # Update the blank position
                 blank_row, blank_col = new_row, new_col
-                
+
                 # Update the step label
                 step_label.config(text=f"Step: {step}")
-            
+
             self.root.after(500)
             self.root.update_idletasks()
+    
+    def display_solution(self, solution):
+        self.state_display.delete(1.0, tk.END)  # Clear the text widget before displaying the solution
 
+        current_board = deepcopy(self.board)  # Create a copy of the initial board
+
+        # Insert the initial state of the puzzle
+        self.state_display.insert(tk.END, "RESULT\nInitial State:\n")
+        for row in current_board:
+            self.state_display.insert(tk.END, " ".join(map(str, row)) + "\n")
+        self.state_display.insert(tk.END, "\n")
+
+        blank_row, blank_col = self.get_blank_position()  # Remove the argument
+
+        for step, action in enumerate(solution, start=1):
+            self.state_display.insert(tk.END, f"Step {step}:\n")
+            
+            new_row, new_col =  action[0], action[1]
+
+            if 0 <= new_row < N and 0 <= new_col < N:
+                current_board[blank_row][blank_col], current_board[new_row][new_col] = current_board[new_row][new_col], current_board[blank_row][blank_col]
+
+                blank_row, blank_col = new_row, new_col 
+
+            # Display the current state of the puzzle
+            for row in current_board:
+                self.state_display.insert(tk.END, " ".join(map(str, row)) + "\n")
+            self.state_display.insert(tk.END, "\n")
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = PuzzleGUI(root)
 
-    solve_button = tk.Button(root, text="Solve", command=app.solve_puzzle)
-    solve_button.pack()
+
 
     root.mainloop()
