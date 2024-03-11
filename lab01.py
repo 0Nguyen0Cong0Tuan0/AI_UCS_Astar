@@ -2,8 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 from queue import PriorityQueue
 import random
+import time
 from copy import deepcopy
-from time import sleep
 import heapq
 
 # Define the size of the puzzle board (N x N)
@@ -119,6 +119,13 @@ def get_solution(state):
         state = state.parent
     return solution[::-1]
 
+def calculate_time(func):
+    start_time = time.time()
+    solution = func()
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    return solution, elapsed_time
+
 class PuzzleGUI:
     def __init__(self, root):
         self.root = root
@@ -176,7 +183,7 @@ class PuzzleInterface:
         self.buttons = []
         self.board = []  # Initialize the board attribute
         self.temp_board = []  # Initialize the temp_board attribute
-        self.numbers = [0,4,1,7,3,2,5,6,8]  # Initial numbers list
+        self.numbers = [3,6,8,5,0,2,4,1,7]  # Initial numbers list
 
         for i in range(N):
             row_buttons = []
@@ -233,28 +240,30 @@ class PuzzleInterface:
 
     def solve_puzzle_uniform_cost(self):
         initial_state = PuzzleState(self.board)
-        solution = uniform_cost_search(initial_state)
+        solution, elapsed_time = calculate_time(lambda: uniform_cost_search(initial_state))
         if solution:
-            messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)}")
-            self.animate_solution(solution)
+            messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)}, Time taken: {elapsed_time:.4f} seconds")
+            self.animate_solution(solution, elapsed_time)
             self.display_solution(solution)
         else:
             messagebox.showinfo("No Solution", "No solution found for the current puzzle.")
 
     def solve_puzzle_astar(self):
         initial_state = PuzzleState(self.board)
-        solution = a_star_inversion_distance(initial_state)
+        solution, elapsed_time = calculate_time(lambda: a_star_inversion_distance(initial_state))
         if solution:
-            messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)}")
-            self.animate_solution(solution)
+            messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)}, Time taken: {elapsed_time:.4f} seconds")
+            self.animate_solution(solution, elapsed_time)
             self.display_solution(solution)
         else:
             messagebox.showinfo("No Solution", "No solution found for the current puzzle.")
 
-    def animate_solution(self, solution):
+    def animate_solution(self, solution, elapsed_time):
         # Update the step label
         step_label = tk.Label(self.root, text=f"Step: {len(solution)}", bg="#FFFFE0")
         step_label.pack()
+        time_label = tk.Label(self.root, text=f"Step: {elapsed_time}", bg="#FFFFE0")
+        time_label.pack()
 
         for step, action in enumerate(solution, start=1):
             blank_row, blank_col = self.get_blank_position()
