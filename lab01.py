@@ -4,6 +4,7 @@ from queue import PriorityQueue
 import random
 from copy import deepcopy
 from time import sleep
+import heapq
 
 # Define the size of the puzzle board (N x N)
 N = 3
@@ -65,6 +66,44 @@ def uniform_cost_search(initial_state):
         for successor in current_state.successors():
             if tuple(map(tuple, successor.board)) not in explored:
                 frontier.put(successor)
+
+    return None
+
+def inversion_distance(state):
+    inv_count = 0
+    for i in range(N * N - 1):
+        for j in range(i + 1, N * N):
+            row1, col1 = divmod(i, N)
+            row2, col2 = divmod(j, N)
+            if state.board[row1][col1] != 0 and state.board[row2][col2] != 0 and state.board[row1][col1] > state.board[row2][col2]:
+                inv_count += 1
+    return inv_count
+
+def a_star_inversion_distance(initial_state):
+    frontier = []  # Use a list as a priority queue
+    heapq.heappush(frontier, (0, initial_state))  # Add initial state with f-score 0
+    explored = set()
+    step = 0
+
+    while frontier:
+        current_f_score, current_state = heapq.heappop(frontier)
+        step += 1
+        print(f"Step {step}:")
+        for row in current_state.board:
+            print(" ".join(map(str, row)))
+        print()
+
+        if is_goal_state(current_state):
+            return get_solution(current_state)
+
+        explored.add(tuple(map(tuple, current_state.board)))
+
+        for successor in current_state.successors():
+            if tuple(map(tuple, successor.board)) not in explored:
+                g_score = current_state.cost + 1  # Assuming each move has a cost of 1
+                h_score = inversion_distance(successor)
+                f_score = g_score + h_score
+                heapq.heappush(frontier, (f_score, successor))
 
     return None
 
@@ -203,8 +242,14 @@ class PuzzleInterface:
             messagebox.showinfo("No Solution", "No solution found for the current puzzle.")
 
     def solve_puzzle_astar(self):
-        # Implement A* search algorithm
-        pass
+        initial_state = PuzzleState(self.board)
+        solution = a_star_inversion_distance(initial_state)
+        if solution:
+            messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)}")
+            self.animate_solution(solution)
+            self.display_solution(solution)
+        else:
+            messagebox.showinfo("No Solution", "No solution found for the current puzzle.")
 
     def animate_solution(self, solution):
         # Update the step label
