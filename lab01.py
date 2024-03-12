@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import messagebox
 from queue import PriorityQueue
-import random
 import time
 from copy import deepcopy
+import psutil
 import heapq
 
 # Define the size of the puzzle board (N x N)
@@ -43,14 +43,18 @@ class PuzzleState:
     def __lt__(self, other):
         return self.cost < other.cost
 
-
 def uniform_cost_search(initial_state):
     frontier = PriorityQueue()
     frontier.put(initial_state)
     explored = set()
     step = 0
 
+    max_memory_usage = 0  # Initialize max memory usage
     while not frontier.empty():
+        # Check memory usage before expanding node
+        memory_usage = get_memory_usage()
+        max_memory_usage = max(max_memory_usage, memory_usage)
+
         current_state = frontier.get()
         step += 1
         print(f"Step {step}:")
@@ -59,7 +63,7 @@ def uniform_cost_search(initial_state):
         print()
 
         if is_goal_state(current_state):
-            return get_solution(current_state)
+            return get_solution(current_state), max_memory_usage
 
         explored.add(tuple(map(tuple, current_state.board)))
 
@@ -67,7 +71,7 @@ def uniform_cost_search(initial_state):
             if tuple(map(tuple, successor.board)) not in explored:
                 frontier.put(successor)
 
-    return None
+    return None, max_memory_usage
 
 def inversion_distance(state):
     inv_count = 0
@@ -85,7 +89,12 @@ def a_star_inversion_distance(initial_state):
     explored = set()
     step = 0
 
+    max_memory_usage = 0  # Initialize max memory usage
     while frontier:
+        # Check memory usage before expanding node
+        memory_usage = get_memory_usage()
+        max_memory_usage = max(max_memory_usage, memory_usage)
+
         current_f_score, current_state = heapq.heappop(frontier)
         step += 1
         print(f"Step {step}:")
@@ -94,7 +103,7 @@ def a_star_inversion_distance(initial_state):
         print()
 
         if is_goal_state(current_state):
-            return get_solution(current_state)
+            return get_solution(current_state), max_memory_usage
 
         explored.add(tuple(map(tuple, current_state.board)))
 
@@ -105,7 +114,14 @@ def a_star_inversion_distance(initial_state):
                 f_score = g_score + h_score
                 heapq.heappush(frontier, (f_score, successor))
 
-    return None
+    return None, max_memory_usage
+
+def get_memory_usage():
+    # Get memory usage in bytes
+    memory_usage_bytes = psutil.Process().memory_info().rss
+    # Convert to MB
+    memory_usage_mb = memory_usage_bytes / (1024 * 1024)
+    return memory_usage_mb
 
 
 def is_goal_state(state):
@@ -121,10 +137,10 @@ def get_solution(state):
 
 def calculate_time(func):
     start_time = time.time()
-    solution = func()
+    solution, memory_usage = func()
     end_time = time.time()
-    elapsed_time = end_time - start_time
-    return solution, elapsed_time
+    elapsed_time_ms = (end_time - start_time) * 1000 
+    return solution, elapsed_time_ms, memory_usage
 
 class PuzzleGUI:
     def __init__(self, root):
@@ -240,30 +256,32 @@ class PuzzleInterface:
 
     def solve_puzzle_uniform_cost(self):
         initial_state = PuzzleState(self.board)
-        solution, elapsed_time = calculate_time(lambda: uniform_cost_search(initial_state))
+        solution, elapsed_time, memory_usage = calculate_time(lambda: uniform_cost_search(initial_state))
         if solution:
-            messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)}, Time taken: {elapsed_time:.4f} seconds")
-            self.animate_solution(solution, elapsed_time)
+            messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)} \nTime taken: {elapsed_time:.4f} ms \nMemory usage: {memory_usage:.4f}MB")
+            self.animate_solution(solution, elapsed_time, memory_usage)
             self.display_solution(solution)
         else:
             messagebox.showinfo("No Solution", "No solution found for the current puzzle.")
 
     def solve_puzzle_astar(self):
         initial_state = PuzzleState(self.board)
-        solution, elapsed_time = calculate_time(lambda: a_star_inversion_distance(initial_state))
+        solution, elapsed_time, memory_usage = calculate_time(lambda: a_star_inversion_distance(initial_state))
         if solution:
-            messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)}, Time taken: {elapsed_time:.4f} seconds")
-            self.animate_solution(solution, elapsed_time)
+            messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)} \nTime taken: {elapsed_time:.4f} ms \nMemory usage: {memory_usage:.4f}MB")
+            self.animate_solution(solution, elapsed_time, memory_usage)
             self.display_solution(solution)
         else:
             messagebox.showinfo("No Solution", "No solution found for the current puzzle.")
 
-    def animate_solution(self, solution, elapsed_time):
+    def animate_solution(self, solution, elapsed_time, memory_usage):
         # Update the step label
         step_label = tk.Label(self.root, text=f"Step: {len(solution)}", bg="#FFFFE0")
         step_label.pack()
-        time_label = tk.Label(self.root, text=f"Step: {elapsed_time}", bg="#FFFFE0")
+        time_label = tk.Label(self.root, text=f"Time taken: {elapsed_time:.4f}ms", bg="#FFFFE0")
         time_label.pack()
+        memory_label = tk.Label(self.root, text=f"Memory usage: {memory_usage:.4f}MB", bg="#FFFFE0")
+        memory_label.pack()
 
         for step, action in enumerate(solution, start=1):
             blank_row, blank_col = self.get_blank_position()
