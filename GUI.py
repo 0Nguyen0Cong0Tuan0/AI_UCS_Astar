@@ -1,153 +1,14 @@
-import tkinter as tk
-from tkinter import messagebox
-from queue import PriorityQueue
-import time
-from copy import deepcopy
-import psutil
-import heapq
-
-# Define the size of the puzzle board (N x N)
-N = 3
-
-goal_board = [[j + N * i + 1 for j in range(N)] for i in range(N)]
-goal_board[N-1][N-1] = 0
-
-class PuzzleState:
-    def __init__(self, board, parent=None, action=None, cost=0):
-        self.board = board
-        self.parent = parent
-        self.action = action
-        self.cost = cost
-        self.blank_position = self.find_blank()
-
-    def find_blank(self):
-        for i in range(N):
-            for j in range(N):
-                if self.board[i][j] == 0:
-                    return i, j
-
-    def successors(self):
-        moves = []
-        row, col = self.blank_position
-        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # right, left, down, up
-
-        for d_row, d_col in directions:
-            new_row, new_col = row + d_row, col + d_col
-            if 0 <= new_row < N and 0 <= new_col < N:
-                new_board = deepcopy(self.board)
-                new_board[row][col], new_board[new_row][new_col] = new_board[new_row][new_col], new_board[row][col]
-                moves.append(PuzzleState(new_board, self, (new_row, new_col), self.cost + 1))
-
-        return moves
-
-    def __lt__(self, other):
-        return self.cost < other.cost
-
-def uniform_cost_search(initial_state):
-    frontier = PriorityQueue()
-    frontier.put(initial_state)
-    explored = set()
-    step = 0
-
-    max_memory_usage = 0  # Initialize max memory usage
-    while not frontier.empty():
-        # Check memory usage before expanding node
-        memory_usage = get_memory_usage()
-        max_memory_usage = max(max_memory_usage, memory_usage)
-
-        current_state = frontier.get()
-        step += 1
-        print(f"Step {step}:")
-        for row in current_state.board:
-            print(" ".join(map(str, row)))
-        print()
-
-        if is_goal_state(current_state):
-            return get_solution(current_state), max_memory_usage
-
-        explored.add(tuple(map(tuple, current_state.board)))
-
-        for successor in current_state.successors():
-            if tuple(map(tuple, successor.board)) not in explored:
-                frontier.put(successor)
-
-    return None, max_memory_usage
-
-def inversion_distance(state):
-    inv_count = 0
-    for i in range(N * N - 1):
-        for j in range(i + 1, N * N):
-            row1, col1 = divmod(i, N)
-            row2, col2 = divmod(j, N)
-            if state.board[row1][col1] != 0 and state.board[row2][col2] != 0 and state.board[row1][col1] > state.board[row2][col2]:
-                inv_count += 1
-    return inv_count
-
-def a_star_inversion_distance(initial_state):
-    frontier = []  # Use a list as a priority queue
-    heapq.heappush(frontier, (0, initial_state))  # Add initial state with f-score 0
-    explored = set()
-    step = 0
-
-    max_memory_usage = 0  # Initialize max memory usage
-    while frontier:
-        # Check memory usage before expanding node
-        memory_usage = get_memory_usage()
-        max_memory_usage = max(max_memory_usage, memory_usage)
-
-        current_f_score, current_state = heapq.heappop(frontier)
-        step += 1
-        print(f"Step {step}:")
-        for row in current_state.board:
-            print(" ".join(map(str, row)))
-        print()
-
-        if is_goal_state(current_state):
-            return get_solution(current_state), max_memory_usage
-
-        explored.add(tuple(map(tuple, current_state.board)))
-
-        for successor in current_state.successors():
-            if tuple(map(tuple, successor.board)) not in explored:
-                g_score = current_state.cost + 1  # Assuming each move has a cost of 1
-                h_score = inversion_distance(successor)
-                f_score = g_score + h_score
-                heapq.heappush(frontier, (f_score, successor))
-
-    return None, max_memory_usage
-
-def get_memory_usage():
-    # Get memory usage in bytes
-    memory_usage_bytes = psutil.Process().memory_info().rss
-    # Convert to MB
-    memory_usage_mb = memory_usage_bytes / (1024 * 1024)
-    return memory_usage_mb
-
-
-def is_goal_state(state):
-    return state.board == goal_board
-
-
-def get_solution(state):
-    solution = []
-    while state.parent:
-        solution.append(state.action)
-        state = state.parent
-    return solution[::-1]
-
-def calculate_time(func):
-    start_time = time.time()
-    solution, memory_usage = func()
-    end_time = time.time()
-    elapsed_time_ms = (end_time - start_time) * 1000 
-    return solution, elapsed_time_ms, memory_usage
+from Module import tk, deepcopy, messagebox
+from State import PuzzleState
+from Algorithms import a_star_inversion_distance, uniform_cost_search, calculate_time
 
 class PuzzleGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("22127436_N-Puzzle Solver")
-        self.root.geometry("400x400")  # Adjusted window size
+        self.root.title("N-Puzzle Solver")
+        self.root.geometry("600x500")  # Adjusted window size
         self.root.configure(bg="#F0F0F0")  # Set background color to slight yellow
+        self.sizeFont = 10
         
         self.create_menu()
 
@@ -158,39 +19,61 @@ class PuzzleGUI:
         space_label = tk.Label(menu_frame, text="", pady=15)
         space_label.pack()
 
+        input_label = tk.Label(menu_frame, text="INPUT", font=("Helvetica", 16, "bold"), fg="#FF0000", justify="center", padx=100, pady=20)
+        input_label.pack()
+
+        size_label = tk.Label(menu_frame, text="Enter the size of the board (N)", font=("Helvetica", 10, "bold"))
+        size_label.pack()
+
+        self.size_entry = tk.Entry(menu_frame)
+        self.size_entry.pack()
+
+        order_label = tk.Label(menu_frame, text="Enter numbers on the board (comma-separated)\n IF THE BLANK SPACE, PLEASE INPUT 0", font=("Helvetica", 10, "bold"))
+        order_label.pack()
+
+        self.order_entry = tk.Entry(menu_frame)
+        self.order_entry.pack()
+
+        space_label = tk.Label(menu_frame, text="", pady=5)
+        space_label.pack()
+
         menu_label = tk.Label(menu_frame, text="CHOOSE THE ALGORITHM", font=("Helvetica", 16, "bold"), fg="#FF0000", justify="center", padx=100, pady=20)
         menu_label.pack()
 
-        uniform_cost_button = tk.Button(menu_frame, text="Uniform Cost Search", command=self.open_puzzle_uniform_cost, padx=10, pady=10)
+        uniform_cost_button = tk.Button(menu_frame, text="Uniform Cost Search", font=("Helvetica", self.sizeFont, "bold"), command=self.open_puzzle_uniform_cost, padx=10, pady=10)
         uniform_cost_button.pack()
 
         space_label = tk.Label(menu_frame, text="", pady=5)
         space_label.pack()
 
-        astar_button = tk.Button(menu_frame, text="A* Search", command=self.open_puzzle_astar, padx=10, pady=10)
+        astar_button = tk.Button(menu_frame, text="A* Search", font=("Helvetica", self.sizeFont, "bold"), command=self.open_puzzle_astar, padx=10, pady=10)
         astar_button.pack()
 
     def open_puzzle_uniform_cost(self):
+        size = int(self.size_entry.get())
+        order = list(map(int, self.order_entry.get().split(',')))
         self.root.destroy()  # Close the menu window
         root = tk.Tk()
-        app = PuzzleInterface(root, "Uniform Cost Search")
+        app = PuzzleInterface(root, "Uniform Cost Search", size, order)
         solve_button = tk.Button(root, text="Solve", command=app.solve_puzzle_uniform_cost)
         solve_button.pack()
         root.mainloop()
 
     def open_puzzle_astar(self):
+        size = int(self.size_entry.get())
+        order = list(map(int, self.order_entry.get().split(',')))
         self.root.destroy()  # Close the menu window
         root = tk.Tk()
-        app = PuzzleInterface(root, "A* Search")
+        app = PuzzleInterface(root, "A* Search", size, order)
         solve_button = tk.Button(root, text="Solve", command=app.solve_puzzle_astar)
         solve_button.pack()
         root.mainloop()
 
 class PuzzleInterface:
-    def __init__(self, root, algorithm):
+    def __init__(self, root, algorithm, size, order):
         self.root = root
         self.root.title("N-Puzzle Solver")
-        self.root.geometry("400x400")  # Adjusted window size
+        self.root.geometry("600x500")  # Adjusted window size
         self.root.configure(bg="#FFFFE0")  # Set background color to slight yellow
 
         self.frame = tk.Frame(self.root)
@@ -199,13 +82,17 @@ class PuzzleInterface:
         self.buttons = []
         self.board = []  # Initialize the board attribute
         self.temp_board = []  # Initialize the temp_board attribute
-        self.numbers = [3,6,8,5,0,2,4,1,7]  # Initial numbers list
+        self.size = size
+        self.order = order
 
-        for i in range(N):
+        self.goal_board = [[j + size * i + 1 for j in range(size)] for i in range(size)]
+        self.goal_board[size-1][size-1] = 0
+
+        for i in range(self.size):
             row_buttons = []
             row_board = []
             row_temp_board = []  # Initialize row for temp_board
-            for j in range(N):
+            for j in range(self.size):
                 button = tk.Button(self.frame, text="", width=2, height=1, command=lambda i=i, j=j: self.move_tile(i, j))
                 button.grid(row=i, column=j)
                 row_buttons.append(button)
@@ -223,15 +110,15 @@ class PuzzleInterface:
         self.algorithm = algorithm
 
     def initialize_board(self):
-        for i in range(N):
-            for j in range(N):
-                self.board[i][j] = self.numbers[i * N + j]
-                self.temp_board[i][j] = self.numbers[i * N + j]  # Initialize temp_board with the same values as board
+        for i in range(self.size):
+            for j in range(self.size):
+                self.board[i][j] = self.order[i * self.size + j]
+                self.temp_board[i][j] = self.order[i * self.size + j]  # Initialize temp_board with the same values as board
         self.update_gui()
 
     def update_gui(self):
-        for i in range(N):
-            for j in range(N):
+        for i in range(self.size):
+            for j in range(self.size):
                 value = self.board[i][j]
                 text = str(value) if value != 0 else ""
                 self.buttons[i][j].config(text=text)
@@ -243,36 +130,36 @@ class PuzzleInterface:
             self.update_gui()
 
     def get_blank_position(self):
-        for i in range(N):
-            for j in range(N):
+        for i in range(self.size):
+            for j in range(self.size):
                 if self.board[i][j] == 0:
                     return i, j
                 
     def get_blank_position_in_temp(self):
-        for i in range(N):
-            for j in range(N):
+        for i in range(self.size):
+            for j in range(self.size):
                 if self.temp_board[i][j] == 0:
                     return i, j
 
     def solve_puzzle_uniform_cost(self):
         initial_state = PuzzleState(self.board)
-        solution, elapsed_time, memory_usage = calculate_time(lambda: uniform_cost_search(initial_state))
+        solution, elapsed_time, memory_usage = calculate_time(lambda: uniform_cost_search(initial_state, self.goal_board))
         if solution:
             messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)} \nTime taken: {elapsed_time:.4f} ms \nMemory usage: {memory_usage:.4f}MB")
             self.animate_solution(solution, elapsed_time, memory_usage)
             self.display_solution(solution)
         else:
-            messagebox.showinfo("No Solution", "No solution found for the current puzzle.")
+            messagebox.showinfo("No Solution", "No solution found for the current puzzle \n                            OR  \n            Your input is in goal state")
 
     def solve_puzzle_astar(self):
         initial_state = PuzzleState(self.board)
-        solution, elapsed_time, memory_usage = calculate_time(lambda: a_star_inversion_distance(initial_state))
+        solution, elapsed_time, memory_usage = calculate_time(lambda: a_star_inversion_distance(initial_state, self.goal_board))
         if solution:
             messagebox.showinfo("Solution Found", f"Number of moves: {len(solution)} \nTime taken: {elapsed_time:.4f} ms \nMemory usage: {memory_usage:.4f}MB")
             self.animate_solution(solution, elapsed_time, memory_usage)
             self.display_solution(solution)
         else:
-            messagebox.showinfo("No Solution", "No solution found for the current puzzle.")
+            messagebox.showinfo("No Solution", "No solution found for the current puzzle \n                            OR  \n           Your input is in goal state")
 
     def animate_solution(self, solution, elapsed_time, memory_usage):
         # Update the step label
@@ -288,7 +175,7 @@ class PuzzleInterface:
             new_row, new_col = blank_row + action[0], blank_col + action[1]
 
             # Ensure the new_row and new_col are within bounds
-            if 0 <= new_row < N and 0 <= new_col < N:
+            if 0 <= new_row < self.size and 0 <= new_col < self.size:
                 self.board[blank_row][blank_col], self.board[new_row][new_col] = self.board[new_row][new_col], self.board[blank_row][blank_col]
 
                 # Update the blank position
@@ -320,7 +207,7 @@ class PuzzleInterface:
 
             new_row, new_col = action[0], action[1]
 
-            if 0 <= new_row < N and 0 <= new_col < N:
+            if 0 <= new_row < self.size and 0 <= new_col < self.size:
                 current_board[blank_row][blank_col], current_board[new_row][new_col] = current_board[new_row][new_col], current_board[blank_row][blank_col]
 
                 blank_row, blank_col = new_row, new_col 
@@ -329,10 +216,4 @@ class PuzzleInterface:
                 self.state_display.insert(tk.END, " ".join(map(str, row)) + "\n")
             self.state_display.insert(tk.END, "\n")
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = PuzzleGUI(root)
 
-
-
-    root.mainloop()
