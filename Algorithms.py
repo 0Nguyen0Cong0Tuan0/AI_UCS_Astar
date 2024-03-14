@@ -4,7 +4,6 @@ def uniform_cost_search(initial_state, goal_state):
     frontier = PriorityQueue()
     frontier.put(initial_state)
     explored = set()
-    step = 0
 
     max_memory_usage = 0  # Initialize max memory usage
     while not frontier.empty():
@@ -13,11 +12,6 @@ def uniform_cost_search(initial_state, goal_state):
         max_memory_usage = max(max_memory_usage, memory_usage)
 
         current_state = frontier.get()
-        step += 1
-        print(f"Step {step}:")
-        for row in current_state.board:
-            print(" ".join(map(str, row)))
-        print()
 
         if current_state.board == goal_state:
             return get_solution(current_state), max_memory_usage
@@ -44,8 +38,7 @@ def a_star_inversion_distance(initial_state, goal_state):
     frontier = []  # Use a list as a priority queue
     heapq.heappush(frontier, (0, initial_state))  # Add initial state with f-score 0
     explored = set()
-    step = 0
-
+    
     max_memory_usage = 0  # Initialize max memory usage
     while frontier:
         # Check memory usage before expanding node
@@ -53,11 +46,6 @@ def a_star_inversion_distance(initial_state, goal_state):
         max_memory_usage = max(max_memory_usage, memory_usage)
 
         current_f_score, current_state = heapq.heappop(frontier)
-        step += 1
-        print(f"Step {step}:")
-        for row in current_state.board:
-            print(" ".join(map(str, row)))
-        print()
 
         if current_state.board == goal_state:
             return get_solution(current_state), max_memory_usage
