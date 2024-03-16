@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import messagebox
 from copy import deepcopy
 from queue import PriorityQueue
-import heapq
 import psutil
 import time
 
@@ -72,17 +71,17 @@ def inversion_distance(state):
     return inv_count
 
 def a_star_inversion_distance(initial_state, goal_state):
-    frontier = []  # Use a list as a priority queue
-    heapq.heappush(frontier, (0, initial_state))  # Add initial state with f-score 0
+    frontier = PriorityQueue()  # Use PriorityQueue instead of a list
+    frontier.put((0, initial_state))  # Add initial state with f-score 0
     explored = set()
     
     max_memory_usage = 0  # Initialize max memory usage
-    while frontier:
+    while not frontier.empty():
         # Check memory usage before expanding node
         memory_usage = get_memory_usage()
         max_memory_usage = max(max_memory_usage, memory_usage)
 
-        current_f_score, current_state = heapq.heappop(frontier)
+        current_f_score, current_state = frontier.get()
 
         if current_state.board == goal_state:
             return get_solution(current_state), max_memory_usage
@@ -94,7 +93,7 @@ def a_star_inversion_distance(initial_state, goal_state):
                 g_score = current_state.cost + 1  # Assuming each move has a cost of 1
                 h_score = inversion_distance(successor)
                 f_score = g_score + h_score
-                heapq.heappush(frontier, (f_score, successor))
+                frontier.put((f_score, successor))
 
     return None, max_memory_usage
 
