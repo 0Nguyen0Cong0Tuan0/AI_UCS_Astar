@@ -39,7 +39,7 @@ class PuzzleState:
 def uniform_cost_search(initial_state, goal_state):
     frontier = PriorityQueue()
     frontier.put(initial_state)
-    explored = set()
+    explored = {}
 
     max_memory_usage = 0  # Initialize max memory usage
     while not frontier.empty():
@@ -52,7 +52,7 @@ def uniform_cost_search(initial_state, goal_state):
         if current_state.board == goal_state:
             return get_solution(current_state), max_memory_usage
 
-        explored.add(tuple(map(tuple, current_state.board)))
+        explored[tuple(map(tuple, current_state.board))] = current_state.cost
 
         for successor in current_state.successors():
             if tuple(map(tuple, successor.board)) not in explored:
@@ -93,27 +93,27 @@ def a_star_inversion_distance(initial_state, goal_state):
     initial_state_cost = inversion_distance(initial_state.board)
     initial_state.cost = initial_state_cost
     frontier.put((initial_state_cost, initial_state))
-    explored = set()
+    explored = {}
 
     max_memory_usage = 0
     while not frontier.empty():
         memory_usage = get_memory_usage()
         max_memory_usage = max(max_memory_usage, memory_usage)
-
         current_f_score, current_state = frontier.get()
 
         if current_state.board == goal_state:
             return get_solution(current_state), max_memory_usage
 
-        explored.add(tuple(map(tuple, current_state.board)))
+        explored[tuple(map(tuple, current_state.board))] = current_state.cost
 
         for successor in current_state.successors():
-            if tuple(map(tuple, successor.board)) not in explored:
+            if tuple(map(tuple, successor.board)) not in explored or explored[tuple(map(tuple, successor.board))] > successor.cost:
                 g_score = current_state.cost + 1
                 h_score = inversion_distance(successor.board)
                 f_score = g_score + h_score
-                successor.cost = f_score
+                successor.cost = g_score
                 frontier.put((f_score, successor))
+                explored[tuple(map(tuple, successor.board))] = successor.cost
 
     return None, max_memory_usage
 
