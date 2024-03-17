@@ -60,24 +60,43 @@ def uniform_cost_search(initial_state, goal_state):
 
     return None, max_memory_usage
 
-def inversion_distance(state):
+def count_inversions(state):
     inv_count = 0
-    for i in range(len(state.board) * len(state.board[0]) - 1):
-        for j in range(i + 1, len(state.board) * len(state.board[0])):
-            row1, col1 = divmod(i, len(state.board[0]))
-            row2, col2 = divmod(j, len(state.board[0]))
-            if state.board[row1][col1] != 0 and state.board[row2][col2] != 0 and state.board[row1][col1] > state.board[row2][col2]:
+    flattened_board = [val for sublist in state for val in sublist]
+    for i in range(len(flattened_board)):
+        for j in range(i + 1, len(flattened_board)):
+            if flattened_board[i] > flattened_board[j] and flattened_board[i] != 0 and flattened_board[j] != 0:
                 inv_count += 1
     return inv_count
 
+def inversion_distance(state):
+    n = len(state)
+    inv_count = count_inversions(state)
+    vertical = inv_count // 3 + inv_count % 3
+
+    horizontal = 0
+    for i in range(n):
+        for j in range(n):
+            if state[i][j] == 0:
+                continue
+            for k in range(j + 1, n):
+                if state[i][k] == 0:
+                    continue
+                if (state[i][j] - 1) // n == (state[i][k] - 1) // n:
+                    if state[i][j] > state[i][k]:
+                        horizontal += 1
+
+    return vertical + horizontal
+
 def a_star_inversion_distance(initial_state, goal_state):
-    frontier = PriorityQueue()  # Use PriorityQueue instead of a list
-    frontier.put((0, initial_state))  # Add initial state with f-score 0
+    frontier = PriorityQueue()
+    initial_state_cost = inversion_distance(initial_state.board)
+    initial_state.cost = initial_state_cost
+    frontier.put((initial_state_cost, initial_state))
     explored = set()
-    
-    max_memory_usage = 0  # Initialize max memory usage
+
+    max_memory_usage = 0
     while not frontier.empty():
-        # Check memory usage before expanding node
         memory_usage = get_memory_usage()
         max_memory_usage = max(max_memory_usage, memory_usage)
 
@@ -90,9 +109,10 @@ def a_star_inversion_distance(initial_state, goal_state):
 
         for successor in current_state.successors():
             if tuple(map(tuple, successor.board)) not in explored:
-                g_score = current_state.cost + 1  # Assuming each move has a cost of 1
-                h_score = inversion_distance(successor)
+                g_score = current_state.cost + 1
+                h_score = inversion_distance(successor.board)
                 f_score = g_score + h_score
+                successor.cost = f_score
                 frontier.put((f_score, successor))
 
     return None, max_memory_usage
