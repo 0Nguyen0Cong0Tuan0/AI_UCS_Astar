@@ -22,7 +22,7 @@ class PuzzleState:
     def successors(self):
         moves = []
         row, col = self.blank_position
-        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # right, left, down, up
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)] 
 
         for d_row, d_col in directions:
             new_row, new_col = row + d_row, col + d_col
@@ -41,9 +41,8 @@ def uniform_cost_search(initial_state, goal_state):
     frontier.put(initial_state)
     explored = {}
 
-    max_memory_usage = 0  # Initialize max memory usage
+    max_memory_usage = 0 
     while not frontier.empty():
-        # Check memory usage before expanding node
         memory_usage = get_memory_usage()
         max_memory_usage = max(max_memory_usage, memory_usage)
 
@@ -118,9 +117,7 @@ def a_star_inversion_distance(initial_state, goal_state):
     return None, max_memory_usage
 
 def get_memory_usage():
-    # Get memory usage in bytes
     memory_usage_bytes = psutil.Process().memory_info().rss
-    # Convert to MB
     memory_usage_mb = memory_usage_bytes / (1024 * 1024)
     return memory_usage_mb
 
@@ -142,8 +139,8 @@ class PuzzleGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("N-Puzzle Solver")
-        self.root.geometry("600x500")  # Adjusted window size
-        self.root.configure(bg="#F0F0F0")  # Set background color to slight yellow
+        self.root.geometry("600x500")  
+        self.root.configure(bg="#F0F0F0")  
         self.sizeFont = 10
         
         self.create_menu()
@@ -188,7 +185,7 @@ class PuzzleGUI:
     def open_puzzle_uniform_cost(self):
         size = int(self.size_entry.get())
         order = list(map(int, self.order_entry.get().split(',')))
-        self.root.destroy()  # Close the menu window
+        self.root.destroy()  
         root = tk.Tk()
         app = PuzzleInterface(root, "Uniform Cost Search", size, order)
         solve_button = tk.Button(root, text="Solve", command=app.solve_puzzle_uniform_cost)
@@ -198,7 +195,7 @@ class PuzzleGUI:
     def open_puzzle_astar(self):
         size = int(self.size_entry.get())
         order = list(map(int, self.order_entry.get().split(',')))
-        self.root.destroy()  # Close the menu window
+        self.root.destroy()  
         root = tk.Tk()
         app = PuzzleInterface(root, "A* Search", size, order)
         solve_button = tk.Button(root, text="Solve", command=app.solve_puzzle_astar)
@@ -209,15 +206,15 @@ class PuzzleInterface:
     def __init__(self, root, algorithm, size, order):
         self.root = root
         self.root.title("N-Puzzle Solver")
-        self.root.geometry("600x500")  # Adjusted window size
-        self.root.configure(bg="#FFFFE0")  # Set background color to slight yellow
+        self.root.geometry("600x500")  
+        self.root.configure(bg="#FFFFE0")  
 
         self.frame = tk.Frame(self.root)
         self.frame.pack()
 
         self.buttons = []
-        self.board = []  # Initialize the board attribute
-        self.temp_board = []  # Initialize the temp_board attribute
+        self.board = []  
+        self.temp_board = [] 
         self.size = size
         self.order = order
 
@@ -227,20 +224,20 @@ class PuzzleInterface:
         for i in range(self.size):
             row_buttons = []
             row_board = []
-            row_temp_board = []  # Initialize row for temp_board
+            row_temp_board = []  
             for j in range(self.size):
                 button = tk.Button(self.frame, text="", width=2, height=1, command=lambda i=i, j=j: self.move_tile(i, j))
                 button.grid(row=i, column=j)
                 row_buttons.append(button)
                 row_board.append(0) 
-                row_temp_board.append(0)  # Add placeholder value to temp_board
+                row_temp_board.append(0)  
             self.buttons.append(row_buttons)
             self.board.append(row_board)
-            self.temp_board.append(row_temp_board)  # Append the row to temp_board
+            self.temp_board.append(row_temp_board)  
 
         self.initialize_board()
 
-        self.state_display = tk.Text(self.root, height=10, width=30)  # Create a Text widget to display the state
+        self.state_display = tk.Text(self.root, height=10, width=30)  
         self.state_display.pack()
 
         self.algorithm = algorithm
@@ -249,7 +246,7 @@ class PuzzleInterface:
         for i in range(self.size):
             for j in range(self.size):
                 self.board[i][j] = self.order[i * self.size + j]
-                self.temp_board[i][j] = self.order[i * self.size + j]  # Initialize temp_board with the same values as board
+                self.temp_board[i][j] = self.order[i * self.size + j]  
         self.update_gui()
 
     def update_gui(self):
@@ -298,7 +295,6 @@ class PuzzleInterface:
             messagebox.showinfo("No Solution", "No solution found for the current puzzle \n                            OR  \n           Your input is in goal state")
 
     def animate_solution(self, solution, elapsed_time, memory_usage):
-        # Update the step label
         step_label = tk.Label(self.root, text=f"Step: {len(solution)}", bg="#FFFFE0")
         step_label.pack()
         time_label = tk.Label(self.root, text=f"Time taken: {elapsed_time:.4f}ms", bg="#FFFFE0")
@@ -310,21 +306,18 @@ class PuzzleInterface:
             blank_row, blank_col = self.get_blank_position()
             new_row, new_col = blank_row + action[0], blank_col + action[1]
 
-            # Ensure the new_row and new_col are within bounds
             if 0 <= new_row < self.size and 0 <= new_col < self.size:
                 self.board[blank_row][blank_col], self.board[new_row][new_col] = self.board[new_row][new_col], self.board[blank_row][blank_col]
 
-                # Update the blank position
                 blank_row, blank_col = new_row, new_col
                 
                 self.root.update_idletasks()
 
     def display_solution(self, solution):
-        self.state_display.delete(1.0, tk.END)  # Clear the text widget before displaying the solution
+        self.state_display.delete(1.0, tk.END)  
 
-        current_board = deepcopy(self.temp_board) # Create a copy of the initial board
+        current_board = deepcopy(self.temp_board) 
         
-        # Insert the initial state of the puzzle
         self.state_display.insert(tk.END, "RESULT\nInitial State:\n")
 
         for row in current_board:
